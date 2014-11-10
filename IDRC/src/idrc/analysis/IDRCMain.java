@@ -41,7 +41,7 @@ public void getAST() throws JavaModelException{
 public void printAST(){
 	for(Map.Entry<String,CompilationUnit> entry:cunits.entrySet()){
 		CompilationUnit cu=entry.getValue();
-		VarDecVisitor vstr = new VarDecVisitor();
+		VarDecVisitor vstr = new VarDecVisitor(cu);
 		cu.accept(vstr);
 		System.out.println("source="+entry.getKey());
 		System.out.println(cu.types().toString());

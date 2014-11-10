@@ -5,8 +5,12 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
+import org.eclipse.core.resources.IMarker;
+import org.eclipse.core.runtime.CoreException;
+import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jdt.core.dom.ASTVisitor;
 import org.eclipse.jdt.core.dom.Annotation;
+import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.Expression;
 import org.eclipse.jdt.core.dom.IExtendedModifier;
 import org.eclipse.jdt.core.dom.MethodInvocation;
@@ -15,7 +19,12 @@ import org.eclipse.jdt.core.dom.VariableDeclarationFragment;
 import org.eclipse.jdt.core.dom.VariableDeclarationStatement;
 
 public class VarDecVisitor extends ASTVisitor {
-	private static ArrayList<String> validEncryptionMethods = new ArrayList<String>(Arrays.asList("encrypt", "test_func"));
+	private static ArrayList<String> validEncryptionMethods = new ArrayList<String>(Arrays.asList("encrypt"));
+	private CompilationUnit cu;
+	
+	public VarDecVisitor(CompilationUnit cu) {
+		this.cu = cu;
+	}
 	
 	private static <T> List<T> castList(Class<? extends T> cl, Collection<?> c) {
 	    List<T> r = new ArrayList<T>(c.size());
@@ -31,6 +40,18 @@ public class VarDecVisitor extends ASTVisitor {
 			}
 		}
 		return false;
+	}
+	
+	private static void createEncryptionProblemMarker(CompilationUnit cu, int lineNum) {
+		System.out.println("ERROR: sensitive data not encrypted!");
+		try {
+			IMarker marker = ((ICompilationUnit) (cu.getJavaElement())).getUnderlyingResource().createMarker(IMarker.PROBLEM);
+			marker.setAttribute(IMarker.LINE_NUMBER, lineNum);
+			marker.setAttribute(IMarker.MESSAGE, "Sensitive data is not encrypted!");
+	        marker.setAttribute(IMarker.PRIORITY, IMarker.PRIORITY_HIGH);
+		} catch (CoreException e1) {
+			e1.printStackTrace();
+		}
 	}
 	
 	@Override
@@ -49,11 +70,11 @@ public class VarDecVisitor extends ASTVisitor {
 			if(e.getClass() == MethodInvocation.class) {
 				String methName = ((SimpleName)((MethodInvocation) e).getName()).getIdentifier();
 				if(!isValidEncryption(methName)) {
-					System.out.println("ERROR: sensitive data not encrypted!");
+					createEncryptionProblemMarker(cu, cu.getLineNumber(e.getStartPosition()));
 					return false;
 				}
 			} else {
-				System.out.println("ERROR: sensitive data not encrypted!");
+				createEncryptionProblemMarker(cu, cu.getLineNumber(e.getStartPosition()));
 				return false;
 			}
 		}
